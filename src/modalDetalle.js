@@ -24,7 +24,8 @@ class ModalDetalle extends Component {
       modal2: false,
       modal3: false,
       viewBtn: true,
-      infoEvicencia : [] ,
+      infoEvicencia: [],
+      desredimirModal: false,
     };
   }
 
@@ -56,9 +57,35 @@ class ModalDetalle extends Component {
       })
       .catch((e) => console.log(e));
   };
-
-  modalTarjeta = (tarjeta, tipo, orden ) => {
-    this.setState({orderNow : orden})
+  desredimir = (orden) => {
+    console.log(orden);
+    this.setState({ orderNow: orden });
+    let data = {
+      cupon: orden.codigoCupon,
+    };
+    const requestInfo = {
+      method: "POST",
+      body: JSON.stringify(data),
+      header: new Headers({
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      }),
+    };
+    fetch(
+      "https://diniz.com.mx/diniz/servicios/services/getOrdenVirgen.php",
+      requestInfo
+    )
+      .then((response) => response.json())
+      .then(({ OK }) => {
+        if (OK) {
+          Swal.fire("Se realizo el ajuste de activacion", "", "success");
+        } else {
+          Swal.fire("Error", "No aplica para reactivacion", "warning");
+        }
+      });
+  };
+  modalTarjeta = (tarjeta, tipo, orden) => {
+    this.setState({ orderNow: orden });
     document.getElementById("cargaModalTarjeta").hidden = false;
     //if (tipo === "recargaTarjeta" ) document.getElementById('recargaModal').hidden = false;
 
@@ -79,6 +106,11 @@ class ModalDetalle extends Component {
     )
       .then((response) => response.json())
       .then((datosTarjeta) => {
+        console.log(datosTarjeta);
+        // if (datosTarjeta.Code === 1 && datosTarjeta.Message.includes("nueva")) {
+        //   this.setState({ tarjeta });
+        //   this.switchModalDesredimir();
+        // } else
         if (datosTarjeta !== null) {
           if (tipo === "infoTarjeta") {
             console.log(datosTarjeta);
@@ -97,6 +129,24 @@ class ModalDetalle extends Component {
 
           document.getElementById("cargaModalTarjeta").hidden = true;
         } else {
+          let data = {
+            token: "bfc7edc9-ed5d-4dbd-b1eb-ab6ce11194ff",
+            orden: this.state.ordenNow,
+            status: "approved",
+            monto: 340,
+          };
+          let requestInfo = {
+            method: "POST",
+            body: JSON.stringify(data),
+            header: new Headers({
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            }),
+          };
+          fetch(
+            "https://recorcholis-services.azurewebsites.net/getOrderDetail.ph",
+            requestInfo
+          );
           this.setState({ datosTarjeta: [] });
           Swal.fire(
             "Error",
@@ -110,7 +160,7 @@ class ModalDetalle extends Component {
         document.getElementById("cargaModalTarjeta").hidden = true;
       });
   };
-  verbtn = (tarjeta,id) => {
+  verbtn = (tarjeta, id) => {
     let data = new FormData();
     data.append("viewbtn", 1);
     data.append("tarjeta", tarjeta);
@@ -138,7 +188,7 @@ class ModalDetalle extends Component {
       .then((response) => {
         if (response.res === 1) {
           this.setState({ viewBtn: false });
-          this.setState({infoEvicencia : response})
+          this.setState({ infoEvicencia: response });
         }
       });
   };
@@ -153,6 +203,9 @@ class ModalDetalle extends Component {
     this.setState({ modal3: !this.state.modal3 });
     this.vBtn();
   };
+  switchModalDesredimir = () => {
+    this.setState({ desredimirModal: !this.state.desredimirModal });
+  };
   vBtn = () => {
     this.props.ordenDetalle.map((orden, index) => {
       if (orden.recorcard !== "") {
@@ -160,10 +213,10 @@ class ModalDetalle extends Component {
       }
     });
   };
-  viewEvidencia= (orden) => {
-    this.setState({orderNow : orden})
+  viewEvidencia = (orden) => {
+    this.setState({ orderNow: orden });
     this.setState({ modal3: !this.state.modal3 });
-  }
+  };
   componentDidMount() {
     this.vBtn();
   }
@@ -183,19 +236,20 @@ class ModalDetalle extends Component {
             switchModal={this.switchModal2}
             datosTarjeta={this.state.datosTarjeta}
             tarjeta={this.state.tarjeta}
-            orden = {this.state.orderNow}
+            orden={this.state.orderNow}
           />
-        ) : this.state.modal3 === true ?  (
-            
-            <ModalEvidencia
+        ) : this.state.modal3 === true ? (
+          <ModalEvidencia
             modal={this.state.modal3}
             switchModal={this.switchModal3}
             datosTarjeta={this.state.datosTarjeta}
             tarjeta={this.state.tarjeta}
-            order = {this.state.orderNow}
-            info = {this.state.infoEvicencia}
+            order={this.state.orderNow}
+            info={this.state.infoEvicencia}
           />
-        ) : ""  } 
+        ) : (
+          ""
+        )}
         <Modal
           id="ModalProveedor1"
           isOpen={this.props.modal}
@@ -238,7 +292,8 @@ class ModalDetalle extends Component {
                         ? this.modalTarjeta.bind(
                             this,
                             orden.recorcard,
-                            "infoTarjeta",orden
+                            "infoTarjeta",
+                            orden
                           )
                         : ""
                     }
@@ -246,8 +301,8 @@ class ModalDetalle extends Component {
                     {orden.recorcard}
                   </td>
                   <td>{orden.monto}</td>
-                  <td>{orden.fecha}</td>
                   <td>{orden.tipo}</td>
+                  <td>{orden.fecha}</td>
                   <td>
                     {orden.regalo_email} / {orden.regalo_name}
                   </td>
@@ -259,7 +314,8 @@ class ModalDetalle extends Component {
                         onClick={this.modalTarjeta.bind(
                           this,
                           orden.recorcard,
-                          "recargaTarjeta",orden
+                          "recargaTarjeta",
+                          orden
                         )}
                         color="info"
                         size="md"
@@ -269,16 +325,22 @@ class ModalDetalle extends Component {
                     </td>
                   ) : orden.codigoCupon === "Recarga" ? (
                     <Button
-                      onClick={this.viewEvidencia.bind(
-                        this,orden
-                      )}
+                      onClick={this.viewEvidencia.bind(this, orden)}
                       color="info"
                       size="md"
                     >
                       Evidencia
                     </Button>
                   ) : (
-                    ""
+                    orden.tipo === "nueva" && (
+                      <Button
+                        color="primary"
+                        onClick={this.desredimir.bind(this, orden)}
+                        style={{ width: 110, fontSize: 13, marginTop: 10 }}
+                      >
+                        Reactivar Cupon
+                      </Button>
+                    )
                   )}
                 </tr>
               ))}
@@ -308,7 +370,6 @@ class ModalDetalle extends Component {
             </Col>
           </ModalFooter>
         </Modal>
-        :''
       </div>
     );
   }
